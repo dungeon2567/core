@@ -69,6 +69,7 @@ namespace ReactUnity.UGUI.Internal
             base.OnEnable();
             raycastTarget = false;
             material = GetDefaultMaterial();
+            type = Type.Sliced;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
