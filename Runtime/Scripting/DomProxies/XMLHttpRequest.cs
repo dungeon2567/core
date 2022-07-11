@@ -104,13 +104,14 @@ namespace ReactUnity.Scripting.DomProxies
 
         public void send(IDictionary<string, object> o)
         {
-            var optionsUrl = options["url"];
+            options = extractOptions(o);
+            
+            string optionsUrl = options["url"] as string;
             
             if(!optionsUrl.StartsWith("http")){
                 optionsUrl = origin + optionsUrl;
-            }
+            } 
             
-            options = extractOptions(o);
             url = new Uri(optionsUrl);
 
             req = UnityWebRequest.Get(url);
