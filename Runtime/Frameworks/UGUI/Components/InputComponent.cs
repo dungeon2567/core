@@ -112,7 +112,7 @@ namespace ReactUnity.UGUI
             InputField.textComponent = TextComponent.Text;
             InputField.placeholder = PlaceholderComponent.Text;
             InputField.fontAsset = TextComponent.Text.font;
-            InputField.CaretWidth = 5;
+            InputField.caretWidth = 5;
 
             GameObject.SetActive(true);
             SetText(text);
