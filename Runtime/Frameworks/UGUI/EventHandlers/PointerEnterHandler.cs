@@ -21,7 +21,7 @@ namespace ReactUnity.UGUI.EventHandlers
         {
             float scaleFactor = ReactEl?.Component?.Context?.RootCanvas?.scaleFactor ?? 1.0f;
 
-            eventData.position = new Vector2(eventData.position.x / scaleFactor, eventData.position.y / scaleFactor);
+            eventData.delta = new Vector2(eventData.position.x / scaleFactor, eventData.position.y / scaleFactor);
 
             OnEvent?.Invoke(eventData);
         }
