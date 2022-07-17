@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using ReactUnity.UGUI.Behaviours;
 
 namespace ReactUnity.UGUI.EventHandlers
 {
@@ -10,19 +9,8 @@ namespace ReactUnity.UGUI.EventHandlers
     {
         public event Action<BaseEventData> OnEvent = default;
 
-        private ReactElement ReactEl;
-
-        private void Start()
-        {
-            ReactEl = GetComponent<ReactElement>();
-        }
-
         public void OnPointerEnter(PointerEventData eventData)
         {
-            float scaleFactor = ReactEl?.Component?.Context?.RootCanvas?.scaleFactor ?? 1.0f;
-
-            eventData.delta = new Vector2(eventData.position.x / scaleFactor, eventData.position.y / scaleFactor);
-
             OnEvent?.Invoke(eventData);
         }
 
