@@ -14,7 +14,7 @@ namespace ReactUnity.UGUI
         {
             Image = Replaced.CreateGraphic<Image>();
             Image.preserveAspect = true;
-            Image.type = Type.Sliced;
+            Image.type = Image.Type.Sliced;
             Replaced.Measurer.Sprite = Image.sprite;
         }
 
