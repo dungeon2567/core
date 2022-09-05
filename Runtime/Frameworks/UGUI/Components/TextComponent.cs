@@ -60,6 +60,8 @@ namespace ReactUnity.UGUI
         public TextComponent(string text, UGUIContext context, string tag) : base(context, tag, false)
         {
             Text = AddComponent<TextMeshProUGUI>();
+            
+            Text.raycastTarget = false;
 
             Measurer = AddComponent<TextMeasurer>();
             Measurer.Layout = Layout;
