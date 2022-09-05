@@ -45,6 +45,11 @@ namespace ReactUnity.UGUI
                 Image.preserveAspect = Convert.ToBoolean(value);
             }
             else
+            if (propertyName == "material")
+            {
+                Image.material = value == null ? null : Resources.Load<Material>(value.ToString());
+            }
+            else
             {
                 base.SetProperty(propertyName, value);
             }
