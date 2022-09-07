@@ -71,26 +71,38 @@ namespace ReactUnity.UGUI.Internal
             if (!cmp) cmp = go.AddComponent<BorderAndBackground>();
 
             var context = comp.Context;
-            
+            var root = context.CreateNativeObject("[GraphicRoot]", typeof(RectTransform), typeof(RoundedBorderMaskImage));
+            var border = context.CreateNativeObject("[BorderImage]", typeof(RectTransform), typeof(BasicBorderImage));
             var bg = context.CreateNativeObject("[BackgroundImage]", typeof(RectTransform), typeof(RawImage));
-            
-            cmp.RootGraphic = bg.GetComponent<RoundedBorderMaskImage>();
+
+
+            cmp.RootGraphic = root.GetComponent<RoundedBorderMaskImage>();
             cmp.RootGraphic.raycastTarget = false;
 
             cmp.Component = comp;
             cmp.Context = context;
-            
+            cmp.RootMask = root.AddComponent<Mask>();
+            cmp.RootMask.showMaskGraphic = false;
             cmp.SetContainer = setContainer;
-            
+
+            cmp.BorderGraphic = border.GetComponent<BasicBorderImage>();
+            cmp.BorderGraphic.InsetBorder = cmp.RootGraphic;
+
             var bgImage = bg.GetComponent<RawImage>();
             cmp.BgImage = bgImage;
             bgImage.color = Color.clear;
 
-            cmp.Root = bg.transform as RectTransform;
+            var sr = context.CreateNativeObject("[Shadows]", typeof(RectTransform));
+
+            cmp.Root = root.transform as RectTransform;
+            cmp.ShadowRoot = sr.transform as RectTransform;
+            cmp.Border = border.transform as RectTransform;
             cmp.BackgroundRoot = bg.transform as RectTransform;
 
+            FullStretch(cmp.ShadowRoot, cmp.Root);
+            FullStretch(cmp.BackgroundRoot, cmp.Root);
+            FullStretch(cmp.Border, cmp.Root);
             FullStretch(cmp.Root, cmp.transform as RectTransform);
-            
             cmp.Root.SetAsFirstSibling();
 
             return cmp;
@@ -114,6 +126,11 @@ namespace ReactUnity.UGUI.Internal
             UpdateBgColor();
 
             SetBackground(bgColor, style.backgroundImage, style.backgroundPositionX, style.backgroundPositionY, style.backgroundSize, style.backgroundRepeatX, style.backgroundRepeatY);
+            SetBoxShadow(style.boxShadow);
+            SetBorderColor(style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor);
+            SetBorderRadius(style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius);
+
+            SetMask(style.maskImage, style.maskPositionX, style.maskPositionY, style.maskSize, style.maskRepeatX, style.maskRepeatY);
         }
 
         public void UpdateLayout(YogaNode layout)
@@ -144,6 +161,16 @@ namespace ReactUnity.UGUI.Internal
             BackgroundRoot.offsetMin = min;
             BackgroundRoot.offsetMax = max;
 
+            ShadowRoot.offsetMin = min;
+            ShadowRoot.offsetMax = max;
+
+
+            var borderSize = new Vector4(borderTop, borderRight, borderBottom, borderLeft);
+            BorderGraphic.enabled = borderLeft > 0 || borderRight > 0 || borderBottom > 0 || borderTop > 0;
+            BorderGraphic.BorderSize = borderSize;
+            BorderGraphic.SetMaterialDirty();
+            BorderGraphic.RefreshInsetBorder();
+
             RootGraphic.SetMaterialDirty();
         }
 
@@ -152,11 +179,31 @@ namespace ReactUnity.UGUI.Internal
             var v = new YogaValue2[4] { tl, tr, br, bl };
 
             RootGraphic.SetMaterialDirty();
+            MaskUtilities.NotifyStencilStateChanged(RootMask);
+
+            BorderGraphic.BorderRadius = v;
+            BorderGraphic.SetMaterialDirty();
+            BorderGraphic.RefreshInsetBorder();
+
+            if (ShadowGraphics != null)
+            {
+                for (int i = 0; i < ShadowGraphics.Count; i++)
+                {
+                    var g = ShadowGraphics[i];
+
+                    g.BorderRadius = v;
+                    g.SetMaterialDirty();
+                }
+            }
         }
 
         private void SetBorderColor(Color top, Color right, Color bottom, Color left)
         {
-        
+            BorderGraphic.TopColor = top;
+            BorderGraphic.RightColor = right;
+            BorderGraphic.BottomColor = bottom;
+            BorderGraphic.LeftColor = left;
+            BorderGraphic.SetMaterialDirty();
         }
 
         private void SetBackground(
@@ -213,7 +260,60 @@ namespace ReactUnity.UGUI.Internal
 
         private void SetBoxShadow(ICssValueList<BoxShadow> shadows)
         {
-        
+            var validCount = shadows.Count;
+
+            if (ShadowGraphics == null)
+            {
+                if (validCount > 0) ShadowGraphics = new List<BoxShadowImage>();
+                else return;
+            }
+
+            var diff = ShadowGraphics.Count - validCount;
+
+            if (diff > 0)
+            {
+                for (int i = diff - 1; i >= 0; i--)
+                {
+                    var sd = ShadowGraphics[validCount + i];
+
+                    ShadowGraphics.RemoveAt(validCount + i);
+                    DestroyImmediate(sd.gameObject);
+                }
+            }
+            else if (diff < 0)
+            {
+                for (int i = -diff - 1; i >= 0; i--)
+                {
+                    CreateShadow();
+                }
+            }
+
+            var len = ShadowGraphics.Count;
+            for (int i = 0; i < len; i++)
+            {
+                var shadow = shadows.Get(i);
+                var g = ShadowGraphics[len - 1 - i];
+                var rt = g.rectTransform;
+
+                g.Shadow = shadow;
+
+                if (shadow.inset)
+                {
+                    if (rt.parent != BackgroundRoot) FullStretch(rt, BackgroundRoot);
+                    rt.sizeDelta = Vector2.zero;
+                    rt.anchoredPosition = Vector2.zero;
+                }
+                else
+                {
+                    if (rt.parent != ShadowRoot) FullStretch(rt, ShadowRoot);
+
+                    rt.sizeDelta = ((shadow.inset ? -1 : 1) * shadow.spread + shadow.blur) * 2;
+                    rt.anchoredPosition = new Vector2(shadow.offset.x, -shadow.offset.y);
+                }
+
+                g.color = shadow.color;
+                g.SetMaterialDirty();
+            }
         }
 
         private void SetMask(
@@ -225,22 +325,113 @@ namespace ReactUnity.UGUI.Internal
             ICssValueList<BackgroundRepeat> repeatYs
         )
         {
-        
+            var validCount = images.Count;
+
+            if (MaskGraphics == null)
+            {
+                if (validCount > 0) MaskGraphics = new List<BackgroundImage>();
+                else return;
+            }
+
+            var diff = MaskGraphics.Count - validCount;
+
+            if (diff > 0)
+            {
+                for (int i = diff - 1; i >= 0; i--)
+                {
+                    DestroyLastMask();
+                }
+            }
+            else if (diff < 0)
+            {
+
+                for (int i = -diff - 1; i >= 0; i--)
+                {
+                    CreateMask();
+                }
+            }
+
+            var len = MaskGraphics.Count;
+            for (int i = 0; i < len; i++)
+            {
+                var sd = MaskGraphics[len - 1 - i];
+                sd.SetBackgroundColorAndImage(Color.white, images.Get(i));
+                sd.BackgroundRepeatX = repeatXs.Get(i);
+                sd.BackgroundRepeatY = repeatYs.Get(i);
+                sd.BackgroundPosition = new YogaValue2(positionsX.Get(i), positionsY.Get(i));
+                sd.BackgroundSize = sizes.Get(i);
+                sd.SetMaterialDirty();
+            }
         }
 
         private void CreateMask()
         {
-        
+            if (MaskGraphics.Count == 0)
+            {
+                if (MaskRoot == null)
+                {
+                    var mr = Context.CreateNativeObject("[MaskRoot]", typeof(RectTransform), typeof(BackgroundImage), typeof(Mask));
+                    MaskRoot = mr.transform as RectTransform;
+                    var children = Component.RectTransform.OfType<RectTransform>().ToList();
+                    FullStretch(MaskRoot, Component.RectTransform);
+                    foreach (var item in children) item.SetParent(MaskRoot);
+
+                    if (Component.RectTransform == Component.Container) SetContainer(MaskRoot);
+                }
+
+                var mask = MaskRoot.GetComponent<Mask>();
+                mask.showMaskGraphic = false;
+                var img = MaskRoot.GetComponent<BackgroundImage>();
+                img.color = Color.clear;
+                img.Context = Context;
+                mask.enabled = img.enabled = true;
+                MaskGraphics.Add(img);
+            }
+            else
+            {
+                var sd = Context.CreateNativeObject("[Mask]", typeof(RectTransform), typeof(BackgroundImage), typeof(Mask));
+                var mask = sd.GetComponent<Mask>();
+                mask.showMaskGraphic = false;
+                var img = sd.GetComponent<BackgroundImage>();
+                img.color = Color.clear;
+                img.Context = Context;
+
+                var last = MaskGraphics[MaskGraphics.Count - 1];
+
+                FullStretch(sd.transform as RectTransform, last.rectTransform.parent as RectTransform);
+                FullStretch(last.rectTransform, sd.transform as RectTransform);
+                MaskGraphics.Add(img);
+            }
         }
 
         private void DestroyLastMask()
         {
-        
+            var i = MaskGraphics.Count - 1;
+            var sd = MaskGraphics[i];
+            MaskGraphics.RemoveAt(i);
+
+            if (i == 0)
+            {
+                var mask = MaskRoot.GetComponent<Mask>();
+                var img = MaskRoot.GetComponent<BackgroundImage>();
+                mask.enabled = img.enabled = false;
+            }
+            else
+            {
+                var child = MaskGraphics[i - 1];
+                child.rectTransform.SetParent(sd.transform.parent);
+                DestroyImmediate(sd.gameObject);
+            }
         }
 
         private void CreateShadow()
         {
-        
+            var sd = Context.CreateNativeObject("[Shadow]", typeof(RectTransform), typeof(BoxShadowImage));
+            var img = sd.GetComponent<BoxShadowImage>();
+            img.MaskRoot = transform;
+            img.raycastTarget = false;
+            ShadowGraphics.Add(img);
+            FullStretch(sd.transform as RectTransform, ShadowRoot);
         }
 
         private void CreateBackgroundImage()
