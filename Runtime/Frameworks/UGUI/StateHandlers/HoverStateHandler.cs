@@ -8,15 +8,29 @@ namespace ReactUnity.UGUI.StateHandlers
     {
         public event Action OnStateStart = default;
         public event Action OnStateEnd = default;
+        
+        private bool IsHovered;
 
         public void OnPointerEnter(PointerEventData eventData)
         {
             OnStateStart?.Invoke();
+            
+            IsHovered = true;
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
             OnStateEnd?.Invoke();
+            
+            IsHovered = false;
+        }
+        
+        private void OnDisable()
+        {
+            if(IsHovered) {
+                OnStateEnd?.Invoke();
+                IsHovered = false;
+            }
         }
 
         public void ClearListeners()
