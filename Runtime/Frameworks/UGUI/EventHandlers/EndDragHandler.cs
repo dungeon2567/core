@@ -10,22 +10,29 @@ namespace ReactUnity.UGUI.EventHandlers
         public event Action<BaseEventData> OnEvent = default;
         
         private bool IsDragging;
+        private PointerEventData EventData;
 
         public void OnBeginDrag(PointerEventData eventData)
         {
             IsDragging = true;
+            
+            EventData = eventData;
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
             OnEvent?.Invoke(eventData);
             
+            EventData = null;
+            
             IsDragging = false;
         }
         
         private void OnDisable(){
             if(IsDragging) {
-                OnEvent?.Invoke(eventData);
+                OnEvent?.Invoke(EventData);
+                
+                EventData = null;
                 
                 IsDragging = false;
             }
