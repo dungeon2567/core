@@ -395,12 +395,16 @@ namespace ReactUnity.UGUI
         {
             if (ComputedStyle == null) return;
             var z = ComputedStyle.zIndex;
+            var layer = ComputedStyle.sortingLayer;
+            var layerIsDefault = layer.value == 0 || !SortingLayer.IsValid(layer.id);
+            var defaultSorting = z == 0 && layerIsDefault;
             Canvas canvas = Canvas;
-            if (!canvas && z == 0) return;
+            if (!canvas && defaultSorting) return;
             if (!canvas) canvas = InitializeCanvas();
 
-            canvas.overrideSorting = z != 0;
+            canvas.overrideSorting = !defaultSorting;
             canvas.sortingOrder = z;
+            canvas.sortingLayerID = layer.id;
         }
 
         protected Canvas InitializeCanvas()
