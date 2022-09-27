@@ -31,8 +31,6 @@ namespace ReactUnity.UGUI
         protected override void DestroySelf()
         {
             GameObject.Destroy(ResponsiveElement);
-            if (BorderAndBackground) GameObject.Destroy(BorderAndBackground);
-            if (OverflowMask) GameObject.Destroy(OverflowMask);
         }
 
         protected override void ApplyLayoutStylesSelf()

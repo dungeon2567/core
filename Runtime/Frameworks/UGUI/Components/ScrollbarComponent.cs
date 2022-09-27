@@ -57,9 +57,19 @@ namespace ReactUnity.UGUI
             Thumb = new ScrollbarThumbComponent(context);
             Thumb.SetParent(this);
             Thumb.Style["pointer-events"] = PointerEvents.All;
-            Thumb.ResolveStyle();
-            Thumb.UpdateBackgroundGraphic(true, true);
-            Scrollbar.targetGraphic = Thumb.BorderAndBackground?.BgImage;
+            Image thumbImage = Thumb.GameObject.AddComponent<Image>();
+            thumbImage.raycastPadding = new Vector4(-6, -6, -6, -6);
+            Scrollbar.targetGraphic = thumbImage;
+
+            Scrollbar.colors = new ColorBlock()
+            {
+                normalColor = new Color(0.5333333333333333f, 0.5333333333333333f, 0.5333333333333333f, 1.0f),
+                highlightedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
+                pressedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
+                selectedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
+                colorMultiplier = 1.0f,
+                fadeDuration = 0.2f
+            };
 
             Data["horizontal"] = false;
             Data["vertical"] = true;

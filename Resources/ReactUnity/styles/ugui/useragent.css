@@ -79,7 +79,7 @@ scroll::scrollbar {
 }
 
 scroll::scrollbar-thumb {
-  background-color: rgba(170, 170, 170);
+  cursor: pointer;
 }
 
 toggle {

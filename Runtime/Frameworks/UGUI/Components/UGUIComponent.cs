@@ -17,8 +17,6 @@ namespace ReactUnity.UGUI
         public GameObject GameObject { get; private set; }
         public RectTransform RectTransform { get; private set; }
         public ReactElement Component { get; private set; }
-        public BorderAndBackground BorderAndBackground { get; protected set; }
-        public MaskAndImage OverflowMask { get; protected set; }
 
         private Selectable selectable;
         public Selectable Selectable
@@ -27,7 +25,6 @@ namespace ReactUnity.UGUI
             internal set
             {
                 selectable = value;
-                UpdateBackgroundGraphic(false, true);
             }
         }
         public CanvasGroup CanvasGroup => GetComponent<CanvasGroup>();
@@ -156,7 +153,6 @@ namespace ReactUnity.UGUI
             ApplyYogaValues();
             ResolveOpacityAndInteractable();
             SetOverflow();
-            UpdateBackgroundGraphic(true, false);
         }
 
         protected void ApplyYogaValues()
@@ -224,7 +220,6 @@ namespace ReactUnity.UGUI
             SetZIndex();
             SetOverflow();
             SetCursor();
-            UpdateBackgroundGraphic(false, true);
         }
 
         #endregion
@@ -297,17 +292,7 @@ namespace ReactUnity.UGUI
 
         private void SetOverflow()
         {
-            var computed = ComputedStyle;
-            var mask = OverflowMask;
-            var hasMask = StylingHelpers.GetStyleEnumCustom(computed, LayoutProperties.Overflow) != YogaOverflow.Visible;
 
-            // Mask is not defined and there is no need for it
-            if (!hasMask && mask == null) return;
-
-            if (mask == null) mask = OverflowMask = MaskAndImage.Create(GameObject, Context);
-
-            mask.SetEnabled(hasMask);
-            mask.SetBorderRadius(computed.borderTopLeftRadius, computed.borderTopRightRadius, computed.borderBottomRightRadius, computed.borderBottomLeftRadius);
         }
 
         private void SetCursor()
@@ -330,65 +315,7 @@ namespace ReactUnity.UGUI
 
         protected bool HasBorderOrBackground()
         {
-            if (BorderAndBackground != null) return true;
-
-            var borderAny = Layout.BorderWidth > 0 || Layout.BorderLeftWidth > 0 || Layout.BorderRightWidth > 0
-                || Layout.BorderTopWidth > 0 || Layout.BorderBottomWidth > 0
-                || Layout.BorderStartWidth > 0 || Layout.BorderEndWidth > 0;
-            if (borderAny) return true;
-
-            if (ComputedStyle.pointerEvents == PointerEvents.All) return true;
-
-            if (ComputedStyle.backgroundColor.a > 0) return true;
-            if (ComputedStyle.HasValue(StyleProperties.backgroundImage)) return true;
-            if (ComputedStyle.HasValue(StyleProperties.maskImage)) return true;
-            if (ComputedStyle.HasValue(StyleProperties.boxShadow)) return true;
-            if (!(ComputedStyle.borderTopLeftRadius.IsZero() && ComputedStyle.borderTopRightRadius.IsZero() &&
-                ComputedStyle.borderBottomRightRadius.IsZero() && ComputedStyle.borderBottomLeftRadius.IsZero())) return true;
-
             return false;
-        }
-
-        public virtual BorderAndBackground UpdateBackgroundGraphic(bool updateLayout, bool updateStyle)
-        {
-            if (ComputedStyle == null) return null;
-
-            if (Selectable)
-            {
-                Selectable.transition = ComputedStyle.appearance == Appearance.None ? Selectable.Transition.None : Selectable.Transition.ColorTint;
-                if (ComputedStyle.navigation != Navigation.Mode.Automatic)
-                    Selectable.navigation = new Navigation() { mode = ComputedStyle.navigation };
-            }
-
-            if (!HasBorderOrBackground()) return null;
-
-            BorderAndBackground image = BorderAndBackground;
-
-            if (image == null)
-            {
-                updateStyle = true;
-                updateLayout = true;
-                image = CreateBorderAndBackground();
-            }
-
-            if (updateLayout)
-            {
-                image.UpdateLayout(Layout);
-            }
-            if (updateStyle)
-            {
-                image.UpdateStyle(ComputedStyle);
-            }
-
-            return image;
-        }
-
-        protected BorderAndBackground CreateBorderAndBackground()
-        {
-            var image = BorderAndBackground.Create(GameObject, this, (x => Container = x));
-            if (Selectable && Selectable.targetGraphic == null)
-                Selectable.targetGraphic = image.BgImage;
-            return BorderAndBackground = image;
         }
 
         private void SetZIndex()

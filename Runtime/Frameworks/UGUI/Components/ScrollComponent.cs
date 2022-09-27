@@ -50,7 +50,9 @@ namespace ReactUnity.UGUI
             viewport.offsetMin = new Vector2(0, -1);
             viewport.offsetMax = new Vector2(1, 0);
             var vpImage = viewport.gameObject.AddComponent<Image>();
-            vpImage.color = Color.clear;
+            viewport.gameObject.AddComponent<Mask>()
+                .showMaskGraphic = false;
+            vpImage.color = Color.white;
 
 
             var content = ctx.CreateNativeObject("[ScrollContent]").AddComponent<RectTransform>();
