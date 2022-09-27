@@ -18,8 +18,8 @@ namespace ReactUnity.UGUI
 
         public ScrollContentResizer ContentResizer { get; private set; }
 
-        public ScrollbarComponent HorizontalScrollbar { get; }
-        public ScrollbarComponent VerticalScrollbar { get; }
+        public ScrollbarComponent HorizontalScrollbar { get; private set; }
+        public ScrollbarComponent VerticalScrollbar { get; private set; }
 
         public override float ScrollWidth => ScrollRect.ScrollWidth;
         public override float ScrollHeight => ScrollRect.ScrollHeight;
@@ -67,10 +67,8 @@ namespace ReactUnity.UGUI
             var resizer = ContentResizer = content.gameObject.AddComponent<ScrollContentResizer>();
             resizer.Layout = Layout;
 
-            HorizontalScrollbar = CreateScrollbar(false);
-            VerticalScrollbar = CreateScrollbar(true);
-            ScrollRect.horizontalScrollbar = HorizontalScrollbar.Scrollbar;
-            ScrollRect.verticalScrollbar = VerticalScrollbar.Scrollbar;
+            SetupContents();
+
             ScrollRect.viewport = viewport;
             ScrollRect.content = content;
             ScrollRect.scrollSensitivity = 50;
@@ -80,9 +78,17 @@ namespace ReactUnity.UGUI
             ScrollRect.movementType = MovementType.Clamped;
         }
 
+        private void SetupContents()
+        {
+            HorizontalScrollbar = CreateScrollbar(false);
+            VerticalScrollbar = CreateScrollbar(true);
+            ScrollRect.horizontalScrollbar = HorizontalScrollbar.Scrollbar;
+            ScrollRect.verticalScrollbar = VerticalScrollbar.Scrollbar;
+        }
+
         private ScrollbarComponent CreateScrollbar(bool vertical)
         {
-            var sc = new ScrollbarComponent(Context);
+            var sc = Context.CreateComponentWithPool("_scrollbar", null, (tag, text) => new ScrollbarComponent(Context));
             sc.Horizontal = !vertical;
             sc.SetParent(this);
             return sc;
@@ -136,5 +142,16 @@ namespace ReactUnity.UGUI
 
         public void ScrollTo(float? left = null, float? top = null, float? smoothness = null) => ScrollRect.ScrollTo(left, top, smoothness);
         public void ScrollBy(float? left = null, float? top = null, float? smoothness = null) => ScrollRect.ScrollBy(left, top, smoothness);
+
+        public override bool Revive()
+        {
+            if (!base.Revive()) return false;
+
+            ScrollLeft = 0;
+            ScrollTop = 0;
+            SetupContents();
+
+            return true;
+        }
     }
 }
