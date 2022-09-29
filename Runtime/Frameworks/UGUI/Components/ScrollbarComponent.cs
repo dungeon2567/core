@@ -72,10 +72,10 @@ namespace ReactUnity.UGUI
 
             Scrollbar.colors = new ColorBlock()
             {
-                normalColor = new Color(0.5333333333333333f, 0.5333333333333333f, 0.5333333333333333f, 1.0f),
-                highlightedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
-                pressedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
-                selectedColor = new Color(0.8313725490196078f, 0.8313725490196078f, 0.8313725490196078f, 1.0f),
+                normalColor = new Color(0.4823529f, 0.3490196f, 0.1607843f, 1.0f),
+                highlightedColor = new Color(0.6313726f, 0.4588235f, 0.2078431f, 1.0f),
+                pressedColor = new Color(0.6313726f, 0.4588235f, 0.2078431f, 1.0f),
+                selectedColor = new Color(0.6313726f, 0.4588235f, 0.2078431f, 1.0f),
                 colorMultiplier = 1.0f,
                 fadeDuration = 0.2f
             };
