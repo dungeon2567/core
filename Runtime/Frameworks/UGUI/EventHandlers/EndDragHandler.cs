@@ -39,16 +39,6 @@ namespace ReactUnity.UGUI.EventHandlers
             }
         }
 
-        private void OnDisable()
-        {
-            if (IsDragging)
-            {
-                OnEvent?.Invoke(null);
-
-                IsDragging = false;
-            }
-        }
-
         public void ClearListeners()
         {
             OnEvent = null;
