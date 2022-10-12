@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Facebook.Yoga;
 using ReactUnity.Helpers;
 using ReactUnity.Types;
@@ -6,10 +7,50 @@ using UnityEngine.UI;
 
 namespace ReactUnity.UGUI.Internal
 {
+#if (NET_STANDARD_2_0 && !NET_STANDARD_2_1) || (NET_4_6 && !UNITY_2021_2_OR_NEWER)
+    using HashCode = ReactUnity.Helpers.HashCode;
+#else
+    using HashCode = System.HashCode;
+#endif
+
     public class RoundedBorderMaskImage : Image
     {
+        private struct ShaderProps
+        {
+            public Material BaseMaterial;
+            public Vector4 BorderRadiusX;
+            public Vector4 BorderRadiusY;
+            public Vector4 BorderRadiusCuts;
+            public Vector2 Size;
+
+            public override bool Equals(object obj)
+            {
+                return obj is ShaderProps props &&
+                       EqualityComparer<Material>.Default.Equals(BaseMaterial, props.BaseMaterial) &&
+                       BorderRadiusX.Equals(props.BorderRadiusX) &&
+                       BorderRadiusY.Equals(props.BorderRadiusY) &&
+                       BorderRadiusCuts.Equals(props.BorderRadiusCuts) &&
+                       Size.Equals(props.Size);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(BaseMaterial, BorderRadiusX, BorderRadiusY, BorderRadiusCuts, Size);
+            }
+
+            public void SetToMaterial(Material mat)
+            {
+                mat.SetVector(ShaderHelpers.BorderRadiusXProp, BorderRadiusX);
+                mat.SetVector(ShaderHelpers.BorderRadiusYProp, BorderRadiusY);
+                mat.SetVector(ShaderHelpers.BorderRadiusCutsProp, BorderRadiusCuts);
+                mat.SetVector(ShaderHelpers.SizeProp, Size);
+            }
+        }
+
+        static Dictionary<ShaderProps, Material> CachedMaterials = new Dictionary<ShaderProps, Material>();
+
         public YogaValue2[] BorderRadius = new YogaValue2[4];
-        public Vector4 Size;
+        public Vector2 Size;
 
         protected override void OnEnable()
         {
@@ -17,19 +58,18 @@ namespace ReactUnity.UGUI.Internal
             type = Type.Sliced;
             pixelsPerUnitMultiplier = 100;
             material = GetDefaultMaterial();
+            SetMaterialDirty();
         }
 
         public virtual Material GetDefaultMaterial()
         {
-            return Instantiate(ResourcesHelper.BorderRadiusMaterial);
+            return ResourcesHelper.BorderRadiusMaterial;
         }
 
         public override Material materialForRendering
         {
             get
             {
-                Material result = base.materialForRendering;
-
                 var br = BorderRadius;
                 var sz = Size;
 
@@ -89,10 +129,22 @@ namespace ReactUnity.UGUI.Internal
                     1 - bry.x
                 );
 
-                result.SetVector(ShaderHelpers.BorderRadiusXProp, brx);
-                result.SetVector(ShaderHelpers.BorderRadiusYProp, bry);
-                result.SetVector(ShaderHelpers.BorderRadiusCutsProp, cutPoints);
-                result.SetVector(ShaderHelpers.SizeProp, Size);
+                var props = new ShaderProps
+                {
+                    BaseMaterial = base.materialForRendering,
+                    BorderRadiusX = brx,
+                    BorderRadiusY = bry,
+                    BorderRadiusCuts = cutPoints,
+                    Size = Size,
+                };
+
+                if (!CachedMaterials.TryGetValue(props, out var result) || !result)
+                {
+                    result = new Material(props.BaseMaterial);
+                    props.SetToMaterial(result);
+                    CachedMaterials[props] = result;
+                }
+
                 return result;
             }
         }
@@ -114,7 +166,7 @@ namespace ReactUnity.UGUI.Internal
         protected virtual void RefreshSize()
         {
             var rect = ((RectTransform) transform).rect;
-            Size = new Vector4(rect.width, rect.height, 0, 0);
+            Size = new Vector2(rect.width, rect.height);
             SetMaterialDirty();
 
             var mask = GetComponent<Mask>();

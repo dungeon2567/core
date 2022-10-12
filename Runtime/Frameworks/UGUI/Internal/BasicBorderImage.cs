@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Facebook.Yoga;
 using ReactUnity.Helpers;
 using ReactUnity.Types;
@@ -7,8 +8,57 @@ using UnityEngine.UI;
 
 namespace ReactUnity.UGUI.Internal
 {
+#if (NET_STANDARD_2_0 && !NET_STANDARD_2_1) || (NET_4_6 && !UNITY_2021_2_OR_NEWER)
+    using HashCode = ReactUnity.Helpers.HashCode;
+#else
+    using HashCode = System.HashCode;
+#endif
+
     public class BasicBorderImage : RoundedBorderMaskImage
     {
+        private struct ShaderProps
+        {
+            public Material BaseMaterial;
+            public Color TopColor;
+            public Color RightColor;
+            public Color BottomColor;
+            public Color LeftColor;
+            public Vector4 BorderSize;
+            public int Stencil;
+
+            public override bool Equals(object obj)
+            {
+                return obj is ShaderProps props &&
+                       EqualityComparer<Material>.Default.Equals(BaseMaterial, props.BaseMaterial) &&
+                       TopColor.Equals(props.TopColor) &&
+                       RightColor.Equals(props.RightColor) &&
+                       BottomColor.Equals(props.BottomColor) &&
+                       LeftColor.Equals(props.LeftColor) &&
+                       BorderSize.Equals(props.BorderSize) &&
+                       Stencil == props.Stencil;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(BaseMaterial, TopColor, RightColor, BottomColor, LeftColor, BorderSize, Stencil);
+            }
+
+            public void SetToMaterial(Material mat)
+            {
+                mat.SetInt("_StencilComp", (int) CompareFunction.Equal);
+                mat.SetInt("_StencilOp", (int) StencilOp.Zero);
+                mat.SetFloat("_Stencil", Stencil);
+                mat.SetColor("_topColor", TopColor);
+                mat.SetColor("_rightColor", RightColor);
+                mat.SetColor("_bottomColor", BottomColor);
+                mat.SetColor("_leftColor", LeftColor);
+                mat.SetVector(ShaderHelpers.BorderSizeProp, BorderSize);
+
+            }
+        }
+
+        static Dictionary<ShaderProps, Material> CachedMaterials = new Dictionary<ShaderProps, Material>();
+
         public Color TopColor;
         public Color RightColor;
         public Color BottomColor;
@@ -19,23 +69,33 @@ namespace ReactUnity.UGUI.Internal
 
         public override Material GetDefaultMaterial()
         {
-            return Instantiate(ResourcesHelper.ColoredBorderMaterial);
+            return ResourcesHelper.ColoredBorderMaterial;
         }
 
         public override Material materialForRendering
         {
             get
             {
-                Material result = base.materialForRendering;
-                result.SetInt("_StencilComp", (int) CompareFunction.Equal);
-                result.SetInt("_StencilOp", (int) StencilOp.Zero);
-                result.SetFloat("_Stencil", (int) result.GetFloat("_Stencil") >> 1);
+                Material baseMat = base.materialForRendering;
+                var stencil = (int) baseMat.GetFloat("_Stencil") >> 1;
 
-                result.SetColor("_topColor", TopColor);
-                result.SetColor("_rightColor", RightColor);
-                result.SetColor("_bottomColor", BottomColor);
-                result.SetColor("_leftColor", LeftColor);
-                result.SetVector(ShaderHelpers.BorderSizeProp, BorderSize);
+                var props = new ShaderProps
+                {
+                    BaseMaterial = baseMat,
+                    TopColor = TopColor,
+                    RightColor = RightColor,
+                    BottomColor = BottomColor,
+                    LeftColor = LeftColor,
+                    BorderSize = BorderSize,
+                    Stencil = stencil,
+                };
+
+                if (!CachedMaterials.TryGetValue(props, out var result) || !result)
+                {
+                    result = new Material(baseMat);
+                    props.SetToMaterial(result);
+                    CachedMaterials[props] = result;
+                }
 
                 return result;
             }

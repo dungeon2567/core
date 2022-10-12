@@ -4,15 +4,16 @@ using Unity.PerformanceTesting;
 
 namespace ReactUnity.Tests.Performance
 {
-    public class IntroTests : TestBase
+    public class IntroTests : PerfTestBase
     {
         public IntroTests(JavascriptEngineType engineType) : base(engineType) { }
 
         [UGUITest, Performance]
         public IEnumerator TestFramePerformance()
         {
-            yield return Measure.Frames().WarmupCount(10).MeasurementCount(60).Run();
+            yield return Measure.Frames()
+                .ProfilerMarkers(DrawCallsCount)
+                .Run();
         }
-
     }
 }

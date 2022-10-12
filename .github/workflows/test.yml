@@ -108,6 +108,15 @@ jobs:
         if: startsWith(matrix.unity.version, '2019')
         run: echo $(cat tests/Packages/manifest.json | jq '.dependencies["com.unity.textmeshpro"]="2.1.6"') > tests/Packages/manifest.json
 
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: tests/Library
+          key: Unity-Library-${{matrix.platform}}-${{ matrix.unity.version }}
+          restore-keys: |
+            Unity-Library-${{matrix.platform}}
+            Unity-Library-
+
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v2
         id: testRunner
@@ -117,14 +126,37 @@ jobs:
         with:
           unityVersion: ${{ matrix.unity.version }}
           testMode: ${{ contains(matrix.suite.assemblies, 'Editor') && 'All' || 'PlayMode' }}
-          customParameters: ${{ matrix.coverage && '-enableCodeCoverage -debugCodeOptimization -coverageOptions assemblyFilters:+ReactUnity,+ReactUnity.*' || '' }} -assemblyNames ${{ matrix.suite.assemblies }}
+          customParameters: ${{ matrix.performance && '-profiler-enable' }} ${{ matrix.coverage && '-enableCodeCoverage -debugCodeOptimization -coverageOptions assemblyFilters:+ReactUnity,+ReactUnity.*' || '' }} -assemblyNames ${{ matrix.suite.assemblies }}
           checkName: ${{ matrix.suite.name }} ${{ matrix.unity.version }}
           projectPath: tests
 
-      - name: Generate Performance Report
-        working-directory: ./tests
+      - name: Cache Performance Test Results
         if: matrix.performance
-        run: dotnet PerformanceReporter/UnityPerformanceBenchmarkReporter.dll --results="${{ github.workspace }}/${{ steps.testRunner.outputs.artifactsPath }}" --reportdirpath=PerformanceReport
+        uses: actions/cache@v3
+        with:
+          path: tests/PerformanceTestResults
+          key: performance-results-${{ github.sha }}
+          restore-keys: |
+            performance-results-
+
+      - name: Copy Test Results to Performance Test Results
+        if: matrix.performance
+        working-directory: ./tests
+        run: |
+          mkdir -p PerformanceTestResults
+          cd "${{ github.workspace }}/${{ steps.testRunner.outputs.artifactsPath }}"
+          find . -name \*.xml -exec bash -c 'cp $0 "${{ github.workspace }}/tests/PerformanceTestResults/$(date +%s)-$(basename ""$0"")"' {} \;
+
+      - name: Keep only last 10 files
+        if: matrix.performance
+        working-directory: tests/PerformanceTestResults
+        continue-on-error: true
+        run: ls -A1t | tail -n +11 | xargs rm
+
+      - name: Generate Performance Report
+        if: matrix.performance
+        working-directory: ./tests
+        run: dotnet PerformanceReporter/UnityPerformanceBenchmarkReporter.dll --results="${{ github.workspace }}/tests/PerformanceTestResults" --reportdirpath=PerformanceReport
 
       - name: Rename Performance Report
         working-directory: ./tests/PerformanceReport/UnityPerformanceBenchmark
@@ -133,13 +165,6 @@ jobs:
           find . -name '*.html' -exec bash -c 'mv $0 index.html' {} \;
           cd ..
           mv UnityPerformanceBenchmark Performance
-
-      - name: Upload Performance Result Artifacts
-        uses: actions/upload-artifact@v2
-        if: matrix.performance
-        with:
-          name: "${{ matrix.suite.name }} ${{ matrix.unity.version }} Performance Report"
-          path: "${{ github.workspace }}/tests/PerformanceReport/Performance"
 
       - name: Commit Snapshots
         if: hashFiles('core/Tests/.snapshots/snapshots.lock') != '' && matrix.main

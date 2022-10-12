@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using Facebook.Yoga;
 using ReactUnity.Types;
 using ReactUnity.UGUI.Behaviours;
 using ReactUnity.UGUI.Measurers;
@@ -59,9 +58,14 @@ namespace ReactUnity.UGUI
 
         public TextComponent(string text, UGUIContext context, string tag) : base(context, tag, false)
         {
+#if REACT_RTLTMPRO
+            Text = AddComponent<RTLTMPro.RTLTextMeshPro>();
+#else
             Text = AddComponent<TextMeshProUGUI>();
             
             Text.raycastTarget = false;
+#endif
+            Component.Text = Text;
 
             Measurer = AddComponent<TextMeasurer>();
             Measurer.Layout = Layout;
@@ -96,12 +100,6 @@ namespace ReactUnity.UGUI
                 Text.richText = Convert.ToBoolean(value);
             }
             else base.SetProperty(property, value);
-        }
-
-        protected override void ApplyLayoutStylesSelf()
-        {
-            base.ApplyLayoutStylesSelf();
-            Text.isRightToLeftText = Layout.LayoutDirection == YogaDirection.RTL;
         }
 
         protected override void ApplyStylesSelf()
