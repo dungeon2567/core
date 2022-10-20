@@ -240,6 +240,18 @@ namespace ReactUnity.UGUI
             SetZIndex();
             SetOverflow();
             SetCursor();
+            
+            var vp = new VariableProperty("--custom-image", typeof(SpriteReference));
+            var customImage = ComputedStyle.GetStyleValue<object>(vp);
+            var cv = AllConverters.SpriteReferenceConverter.TryGetConstantValue(customImage, out SpriteReference rf);
+
+            rf?.Get(Context, sprite => {
+                var img = GetOrAddComponent<Image>();
+                
+                 img.type = Image.Type.Sliced;
+                
+                 img.sprite = sprite; 
+            });
         }
 
         #endregion
